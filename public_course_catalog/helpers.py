@@ -17,8 +17,8 @@ def get_data(request_data, sort_key=None):
         logging.error(f'get_data(): request timed out ({request_timeout})')
         return None
 
-    except requests.exceptions.RequestException as Err:
-        logging.error(f'get_data(): exception occurred\n{Err.args[0]}')
+    except requests.exceptions.RequestException as err:
+        logging.error(f'get_data(): exception occurred\n{err.args[0]}')
         return None
 
     try:
@@ -54,6 +54,9 @@ def get_item(item_type, item_code=None):
     if not items:
         logging.error(f'get_item(): items({item_type}) is null')
         return None
+
+    if item_code == 'all':
+        return items
 
     if isinstance(item_code, int):
         item_code = str(item_code)
