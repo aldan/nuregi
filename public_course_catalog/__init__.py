@@ -1,60 +1,81 @@
-# Basic API for Public Course Catalog
+# Wrapper for Public Course Catalog API
 
-import requests
-import logging
-
-request_url = 'https://registrar.nu.edu.kz/my-registrar/public-course-catalog/json'
-request_timeout = 30
-
-
-def get_semesters():
-
-    request_data = {
-        'method': 'getSemesters'
-    }
-
-    try:
-        res = requests.post(request_url, data=request_data, timeout=request_timeout)
-        logging.info(f'get_semesters(): status {res.status_code}')
-        res.raise_for_status()
-
-    except requests.exceptions.Timeout:
-        logging.error(f'get_semesters(): request timed out ({request_timeout})')
-        return None
-
-    except requests.exceptions.RequestException as Err:
-        logging.error(f'get_semesters(): exception occurred\n{Err.args[0]}')
-        return None
-
-    try:
-        semesters_list = res.json()
-        logging.info(f'get_semesters(): {semesters_list}')
-        return semesters_list
-
-    except:
-        logging.error(f'get_semesters(): could not process data')
-        return None
+import public_course_catalog.helpers as helpers
 
 
 def get_semester(semester_code=None):
-
-    semesters_list = get_semesters()
-
-    if not semesters_list:
-        logging.error(f'get_semester(): semesters_list is null')
-        return None
-
-    if isinstance(semester_code, int):
-        semester_code = str(semester_code)
-
-    if not semester_code:
-        logging.warning(f'get_semester(): semester_code not specified')
-        try:
-            return semesters_list[0]
-        except IndexError:
-            logging.error(f'get_semester(): semesters_list is empty')
-            return None
-
-    semester = next((sem for sem in semesters_list if sem['ID'] == semester_code), None)
-    logging.info(f'get_semester(): {semester}')
+    semester = helpers.get_item('semester', semester_code)
     return semester
+
+
+def get_school(school_code=None):
+    school = helpers.get_item('school', school_code)
+    return school
+
+
+def get_academic_level(level_code=None):
+    academic_level = helpers.get_item('level', level_code)
+    return academic_level
+
+
+def get_department(department_code=None):
+    department = helpers.get_item('department', department_code)
+    return department
+
+
+def get_subject(subject_code=None):
+    subject = helpers.get_item('subject', subject_code)
+    return subject
+
+
+def get_instructor(instructor_code=None):
+    instructor = helpers.get_item('instructor', instructor_code)
+    return instructor
+
+
+def get_breadth(breadth_code=None):
+    breadth = helpers.get_item('breadth', breadth_code)
+    return breadth
+
+
+def get_course_list(limit, offset=None, semester_code=None, school_code=None, department_code=None,
+                    level_code=None, subject_code=None, instructor_code=None, breadth_code=None):
+    args = list(locals().values())
+    brackets = [''] * 9
+
+    if not args[1]:
+        args[1] = '1'
+
+    if not args[2]:
+        args[2] = '-1'
+
+    for index, arg in enumerate(args):
+        if arg:
+            brackets[index] = '[]'
+        if not arg:
+            args[index] = ''
+        if isinstance(arg, int):
+            args[index] = str(arg)
+
+    request_data = {
+        'method': 'getSearchData',
+        'searchParams[formSimple]': 'false',
+        'searchParams[limit]': args[0],
+        'searchParams[page]': args[1],
+        'searchParams[start]': '0',
+        'searchParams[quickSearch]': '',
+        'searchParams[sortField]': '-1',
+        'searchParams[sortDescending]': '-1',
+        'searchParams[semester]': args[2],
+        f'searchParams[schools]{brackets[3]}': args[3],
+        f'searchParams[departments]{brackets[4]}': args[4],
+        f'searchParams[levels]{brackets[5]}': args[5],
+        f'searchParams[subjects]{brackets[6]}': args[6],
+        f'searchParams[instructors]{brackets[7]}': args[7],
+        f'searchParams[breadths]{brackets[8]}': args[8],
+        'searchParams[abbrNum]': '',
+        'searchParams[credit]': ''
+    }
+
+    course_list = helpers.get_data(request_data)
+    return course_list
