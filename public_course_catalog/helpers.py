@@ -7,14 +7,18 @@ request_url = 'https://registrar.nu.edu.kz/my-registrar/public-course-catalog/js
 request_timeout = 30
 
 
-def get_data(request_data, sort_key=None):
+def get_data(request_data, sort_key=None, req_timeout=None):
+    if not req_timeout:
+        req_timeout = request_timeout
+
     try:
-        res = requests.post(request_url, data=request_data, timeout=request_timeout)
+        res = requests.post(request_url, data=request_data, timeout=req_timeout)
         logging.info(f'get_data(): status {res.status_code}')
         res.raise_for_status()
+        # print(res.elapsed.total_seconds())
 
     except requests.exceptions.Timeout:
-        logging.error(f'get_data(): request timed out ({request_timeout})')
+        logging.error(f'get_data(): request timed out ({req_timeout})')
         return None
 
     except requests.exceptions.RequestException as err:
@@ -48,8 +52,8 @@ def get_data(request_data, sort_key=None):
         return None
 
 
-def get_item(item_type, item_code=None):
-    items = get_data({'method': f'get{item_type}s'}, 'ID')
+def get_item(item_type, item_code=None, timeout=None):
+    items = get_data({'method': f'get{item_type}s'}, 'ID', timeout)
 
     if not items:
         logging.error(f'get_item(): items({item_type}) is null')
