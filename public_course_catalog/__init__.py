@@ -41,7 +41,7 @@ def get_breadth(breadth_code=None, timeout=None):
 def get_course_list(limit, offset=None, semester_code=None, school_code=None, department_code=None,
                     level_code=None, subject_code=None, instructor_code=None, breadth_code=None, timeout=None):
     args = list(locals().values())
-    brackets = [''] * 9
+    brackets = [''] * len(args)
 
     if not args[1]:
         args[1] = '1'
