@@ -58,8 +58,10 @@ def convert_pdf_to_json(pdf_type: PdfType, data_format, extra_params=None, timeo
         logging.warning("convert_pdf_to_json(): failed to read data with utf-8 encoding. falling back to cp1252")
         dataframe = read_pdf(content, encoding="cp1252", pages='all', lattice=True, pandas_options={'header': None})
 
-    dataframe = pd.concat(dataframe, ignore_index=True).replace(r'\r', r' ', regex=True)
-
+    try:
+        dataframe = pd.concat(dataframe, ignore_index=True).replace(r'\r', r' ', regex=True)
+    except ValueError:  # no tables found
+        return {}
     return dataframe.to_json(orient=data_format, index=(data_format == "columns"))
 
 
