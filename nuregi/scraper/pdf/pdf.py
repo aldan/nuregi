@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 from tabula import read_pdf
 
-from exceptions import ValidationError
+from nuregi.exceptions import ValidationError
 
 BASE_URL = "https://registrar.nu.edu.kz/registrar_downloads/json"
 

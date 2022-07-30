@@ -7,7 +7,7 @@ from enum import Enum
 
 import requests
 
-from exceptions import APIError, ValidationError
+from nuregi.exceptions import APIError, ValidationError
 
 BASE_URL = "https://registrar.nu.edu.kz/my-registrar/public-course-catalog/json"
 
