@@ -6,7 +6,7 @@ long_description = (base_dir / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='nuregi',
-    version='0.1.0',
+    version='0.2.0.dev1',
     description='A basic Python-based API client library for registrar.nu.edu.kz',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -15,15 +15,14 @@ setup(
     author_email='gitaldan@gmail.com',
 
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Java',
         'Natural Language :: English',
     ],
@@ -38,11 +37,11 @@ setup(
     packages=find_packages(),
 
     install_requires=[
-        'requests',
-        'numpy',
-        'pandas',
-        'tabula-py',
+        'requests==2.28.1',
+        'numpy==1.23.1',
+        'pandas==1.4.3',
+        'tabula-py==2.4.0',
     ],
 
-    python_requires='>=3.6',
+    python_requires='>=3.8',
 )
