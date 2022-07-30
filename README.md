@@ -10,8 +10,8 @@ A basic Python-based API client library for registrar.nu.edu.kz
 
 ## Requirements
 
-- Python 3.6+
-- `OPTIONAL` Java 8+ is required to use `pdfparser` package
+- Python 3.8+
+- `OPTIONAL` Java 8+ is required to use `scraper.pdf` package
 
 ## Installation
 
@@ -22,72 +22,78 @@ pip install nuregi
 ```
 
 ## Usage
-
-#### `public_course_catalog`
+> Refer to function docstrings for complete set of arguments
+### `nuregi.api`
 
 ```python
-import public_course_catalog as pcc
+from nuregi import api
 
+"""
+All get_object type functions have object_id and timeout arguments
+"""
 
-spring_2021_semester = pcc.get_semester(semester_code=541, timeout=1)
-print(spring_2021_semester)
+# Sample for semesters
+fall2022_semester = api.get_semester(object_id=642, timeout=10)
+all_semesters = api.get_semester(timeout=10)
 
-all_schools = pcc.get_school(school_code='all')
-print(all_schools)
+# Other objects
+schools = api.get_school()
+academic_levels = api.get_academic_level()
+departments = api.get_department()
+subjects = api.get_subject()
+instructors = api.get_instructor()
+breadth = api.get_breadth()  # likely deprecated
 
-undergraduate_level = pcc.get_academic_level(level_code=1, timeout=1)
-print(undergraduate_level)
-
-all_departments = pcc.get_department(department_code='all', timeout=1)
-print(all_departments)
-
-instructor_with_id1 = pcc.get_instructor()
-print(instructor_with_id1)
-
-all_subjects = pcc.get_subject('all')
-print(all_subjects)
-
-course_list = pcc.get_course_list(
+course_list = api.get_course_list(
     limit=10,
     offset=1,
-    semester_code=541,
-    school_code=13,
-    department_code=None,
-    level_code=1,
-    subject_code=None,
-    instructor_code=None,
-    breadth_code=None,
-    timeout=5
+    semester_id=642,
+    school_id=13,
+    department_id=None,
+    level_id=1,
+    subject_id=None,
+    instructor_id=None,
+    breadth_id=None,
+    timeout=10,
 )
-print(course_list)
 ```
 
-#### `pdfscraper`
+### `nuregi.scraper.pdf`
 
 ```python
-import pdfscraper
+from nuregi.scraper.pdf import *
 
-
-json_data = pdfscraper.get_csbs_as_json_columns(
-    semester_code=541,
-    academic_level_code=1,
-    school_code=13,
-    request_timeout=10,
-    verify_params=True,
-    verification_timeout=3
+fall2022_ug_seds_schedule = get_schedule(
+    data_format="columns",
+    semester=642,
+    academic_level=1,
+    school=13,
+    timeout=15,
 )
 
-with open('csbs.json', 'w') as output_file:
-    output_file.write(str(json_data))
+fall2022_ug_seds_course_requirements = get_requirements(
+    data_format="table",
+    semester=642,
+    academic_level=1,
+    school=13,
+    timeout=15,
+)
+
+spring2022_seds_finals = get_final_schedule(
+    data_format="columns",
+    semester=642,
+    school=13,
+    timeout=15
+)
 ```
 
-## Credits
-
-Used in the project:
+## Dependencies
 - [Requests](https://github.com/psf/requests)
 - [Tabula-py](https://github.com/chezou/tabula-py)
+- [numpy](https://github.com/numpy/numpy)
+- [pandas](https://github.com/pandas-dev/pandas)
 
-## Fair Use Disclaimer
+## Notice
 
 This project is for educational purposes only and should not 
-be utilized to interfere with operation of https://registrar.nu.edu.kz/.
+be used to interfere with operation of https://registrar.nu.edu.kz/.
