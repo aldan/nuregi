@@ -6,7 +6,7 @@ long_description = (base_dir / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='nuregi',
-    version='0.2.0.dev2',
+    version='0.2.0.dev3',
     description='A basic Python-based API client library for registrar.nu.edu.kz',
     long_description=long_description,
     long_description_content_type='text/markdown',
