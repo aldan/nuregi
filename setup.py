@@ -6,7 +6,7 @@ long_description = (base_dir / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='nuregi',
-    version='0.2.0.dev1',
+    version='0.2.0.dev2',
     description='A basic Python-based API client library for registrar.nu.edu.kz',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -37,10 +37,10 @@ setup(
     packages=find_packages(),
 
     install_requires=[
-        'requests==2.28.1',
-        'numpy==1.23.1',
-        'pandas==1.4.3',
-        'tabula-py==2.4.0',
+        'requests==2.31.0',
+        'numpy==1.25.1',
+        'pandas==2.0.3',
+        'tabula-py==2.7.0',
     ],
 
     python_requires='>=3.8',

@@ -7,6 +7,7 @@ from io import BytesIO
 
 import pandas as pd
 import requests
+from requests.exceptions import SSLError
 from tabula import read_pdf
 
 from nuregi.exceptions import ValidationError
@@ -45,7 +46,12 @@ def convert_pdf_to_json(pdf_type: PdfType, data_format, extra_params=None, timeo
     if extra_params is not None and not isinstance(extra_params, dict):
         raise ValidationError("extra_params must be a dict")
 
-    response = requests.get(BASE_URL, params=params, timeout=timeout)
+    try:
+        response = requests.get(BASE_URL, params=params, timeout=timeout)
+    except SSLError:
+        # nu.edu.kz isnt providing full certificate chain so requests raises SSLError
+        response = requests.get(BASE_URL, params=params, timeout=timeout, verify=False)
+
     logging.info(response.url, response.status_code)
     response.raise_for_status()
     content = BytesIO(response.content)

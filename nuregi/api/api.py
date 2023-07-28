@@ -6,6 +6,7 @@ import logging
 from enum import Enum
 
 import requests
+from requests.exceptions import SSLError
 
 from nuregi.exceptions import APIError, ValidationError
 
@@ -31,7 +32,12 @@ def post_request(request_data, sort_by=None, timeout=None):
     :return: course data in JSON format
     """
 
-    response = requests.post(BASE_URL, data=request_data, timeout=timeout)
+    try:
+        response = requests.post(BASE_URL, data=request_data, timeout=timeout)
+    except SSLError:
+        # nu.edu.kz isnt providing full certificate chain so requests raises SSLError
+        response = requests.post(BASE_URL, data=request_data, timeout=timeout, verify=False)
+
     logging.info(response.url, response.status_code)
     response.raise_for_status()
 
