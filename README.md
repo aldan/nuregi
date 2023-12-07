@@ -1,5 +1,4 @@
 # Nuregi
-
 [![Downloads](https://pepy.tech/badge/nuregi)](https://pepy.tech/project/nuregi)
 ![PyPI](https://img.shields.io/pypi/v/nuregi)
 ![Libraries.io dependency status for latest release](https://img.shields.io/librariesio/release/pypi/nuregi)
@@ -9,42 +8,37 @@
 A basic Python-based API client library for registrar.nu.edu.kz
 
 ## Requirements
-
-- Python 3.8+
-- `OPTIONAL` Java 8+ is required to use `scraper.pdf` package
+- Python 3.11+
+- Java 8+ is required to use tabula-py
 
 ## Installation
-
-Install with [`pip`](https://pypi.org/project/nuregi/): 
-
+Install with [`pip`](https://pypi.org/project/nuregi/):
 ```
 pip install nuregi
 ```
 
 ## Usage
-> Refer to function docstrings for complete set of arguments
-### `nuregi.api`
-
+### API
 ```python
-from nuregi import api
+import nuregi
 
 """
 All get_object type functions have object_id and timeout arguments
 """
 
 # Sample for semesters
-fall2022_semester = api.get_semester(object_id=642, timeout=10)
-all_semesters = api.get_semester(timeout=10)
+fall2022_semester = nuregi.get_semester(object_id=642, timeout=10)
+all_semesters = nuregi.get_semester(timeout=10)
 
 # Other objects
-schools = api.get_school()
-academic_levels = api.get_academic_level()
-departments = api.get_department()
-subjects = api.get_subject()
-instructors = api.get_instructor()
-breadth = api.get_breadth()  # likely deprecated
+schools = nuregi.get_school()
+academic_levels = nuregi.get_academic_level()
+departments = nuregi.get_department()
+subjects = nuregi.get_subject()
+instructors = nuregi.get_instructor()
+breadth = nuregi.get_breadth()  # likely deprecated
 
-course_list = api.get_course_list(
+course_list = nuregi.get_course_list(
     limit=10,
     offset=1,
     semester_id=642,
@@ -58,42 +52,32 @@ course_list = api.get_course_list(
 )
 ```
 
-### `nuregi.scraper.pdf`
-
+### Scraper
 ```python
-from nuregi.scraper.pdf import *
+import nuregi
 
-fall2022_ug_seds_schedule = get_schedule(
-    data_format="columns",
+scraper = nuregi.Scraper(timeout=10, ignore_ssl=True)
+
+current_semester = scraper.get_last_published_semester()
+
+fall2022_ug_seds_course_schedule = scraper.get_course_schedule(
     semester=642,
     academic_level=1,
     school=13,
-    timeout=15,
 )
 
-fall2022_ug_seds_course_requirements = get_requirements(
-    data_format="table",
+fall2022_ug_seds_course_requirements = scraper.get_course_requirements(
     semester=642,
     academic_level=1,
     school=13,
-    timeout=15,
 )
 
-spring2022_seds_finals = get_final_schedule(
-    data_format="columns",
+spring2022_seds_finals = scraper.get_finals_schedule(
     semester=642,
     school=13,
-    timeout=15
 )
 ```
 
-## Dependencies
-- [Requests](https://github.com/psf/requests)
-- [Tabula-py](https://github.com/chezou/tabula-py)
-- [numpy](https://github.com/numpy/numpy)
-- [pandas](https://github.com/pandas-dev/pandas)
-
 ## Notice
-
-This project is for educational purposes only and should not 
+This project is for educational purposes only and should not
 be used to interfere with operation of https://registrar.nu.edu.kz/.
