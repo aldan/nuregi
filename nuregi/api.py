@@ -14,6 +14,10 @@ BASE_URL = "https://registrar.nu.edu.kz/my-registrar/public-course-catalog/json"
 
 
 class RegistrarObject(Enum):
+    """
+    Registrar object types
+    """
+
     SEMESTER = "semester"
     SCHOOL = "school"
     ACADEMIC_LEVEL = "level"
@@ -36,7 +40,9 @@ def post_request(request_data, sort_by=None, timeout=None):
         response = requests.post(BASE_URL, data=request_data, timeout=timeout)
     except SSLError:
         # nu.edu.kz isnt providing full certificate chain so requests raises SSLError
-        response = requests.post(BASE_URL, data=request_data, timeout=timeout, verify=False)
+        response = requests.post(
+            BASE_URL, data=request_data, timeout=timeout, verify=False
+        )
 
     logging.info(response.url, response.status_code)
     response.raise_for_status()
@@ -50,8 +56,8 @@ def post_request(request_data, sort_by=None, timeout=None):
     if sort_by:
         try:
             response_data = sorted(response_data, key=lambda x: x[sort_by])
-        except KeyError:
-            raise ValidationError(f"Invalid sort_by key: {sort_by}")
+        except KeyError as error:
+            raise ValidationError(f"Invalid sort_by key: {sort_by}") from error
 
     return response_data
 
@@ -74,8 +80,8 @@ def get_registrar_object(object_type: RegistrarObject, object_id=None, timeout=N
     try:
         obj = next((obj for obj in objects if obj["ID"] == object_id))
         return obj
-    except StopIteration:
-        raise ValidationError(f"Invalid object_id: {object_id}")
+    except StopIteration as error:
+        raise ValidationError(f"Invalid object_id: {object_id}") from error
 
 
 def get_semester(object_id=None, timeout=None):
@@ -105,7 +111,9 @@ def get_academic_level(object_id=None, timeout=None):
     :param timeout: time to wait for Registrar to respond
     :return: academic_level object(s)
     """
-    return get_registrar_object(RegistrarObject.ACADEMIC_LEVEL, object_id, timeout=timeout)
+    return get_registrar_object(
+        RegistrarObject.ACADEMIC_LEVEL, object_id, timeout=timeout
+    )
 
 
 def get_department(object_id=None, timeout=None):
@@ -148,43 +156,57 @@ def get_breadth(object_id=None, timeout=None):
     return get_registrar_object(RegistrarObject.BREADTH, object_id, timeout=timeout)
 
 
-def get_course_list(limit, offset=None, semester_id=None, school_id=None, department_id=None,
-                    level_id=None, subject_id=None, instructor_id=None, breadth_id=None, timeout=None):
+# pylint: disable=unused-argument,too-many-arguments,too-many-locals
+def get_course_list(
+    limit,
+    offset=None,
+    semester_id=None,
+    school_id=None,
+    department_id=None,
+    level_id=None,
+    subject_id=None,
+    instructor_id=None,
+    breadth_id=None,
+    timeout=None,
+):
+    """
+    Registrar search API
+    """
     args = list(locals().values())
-    brackets = [''] * len(args)
+    brackets = [""] * len(args)
 
     if not args[1]:
-        args[1] = '1'
+        args[1] = "1"
 
     if not args[2]:
-        args[2] = '-1'
+        args[2] = "-1"
 
     for index, arg in enumerate(args):
         if arg:
-            brackets[index] = '[]'
+            brackets[index] = "[]"
         if not arg:
-            args[index] = ''
+            args[index] = ""
         if isinstance(arg, int):
             args[index] = str(arg)
 
     request_data = {
-        'method': 'getSearchData',
-        'searchParams[formSimple]': 'false',
-        'searchParams[limit]': args[0],
-        'searchParams[page]': args[1],
-        'searchParams[start]': '0',
-        'searchParams[quickSearch]': '',
-        'searchParams[sortField]': '-1',
-        'searchParams[sortDescending]': '-1',
-        'searchParams[semester]': args[2],
-        f'searchParams[schools]{brackets[3]}': args[3],
-        f'searchParams[departments]{brackets[4]}': args[4],
-        f'searchParams[levels]{brackets[5]}': args[5],
-        f'searchParams[subjects]{brackets[6]}': args[6],
-        f'searchParams[instructors]{brackets[7]}': args[7],
-        f'searchParams[breadths]{brackets[8]}': args[8],
-        'searchParams[abbrNum]': '',
-        'searchParams[credit]': ''
+        "method": "getSearchData",
+        "searchParams[formSimple]": "false",
+        "searchParams[limit]": args[0],
+        "searchParams[page]": args[1],
+        "searchParams[start]": "0",
+        "searchParams[quickSearch]": "",
+        "searchParams[sortField]": "-1",
+        "searchParams[sortDescending]": "-1",
+        "searchParams[semester]": args[2],
+        f"searchParams[schools]{brackets[3]}": args[3],
+        f"searchParams[departments]{brackets[4]}": args[4],
+        f"searchParams[levels]{brackets[5]}": args[5],
+        f"searchParams[subjects]{brackets[6]}": args[6],
+        f"searchParams[instructors]{brackets[7]}": args[7],
+        f"searchParams[breadths]{brackets[8]}": args[8],
+        "searchParams[abbrNum]": "",
+        "searchParams[credit]": "",
     }
 
     course_list = post_request(request_data, timeout=timeout)
