@@ -1,164 +1,159 @@
-"""
-PDF scraper for documents from Registrar
-"""
+"""Document scraper."""
+
+import re
 from enum import Enum
 from io import BytesIO
+from typing import Any
 
-import pandas as pd
 import requests
-from requests.exceptions import SSLError
-from tabula import read_pdf
 
-from nuregi.exceptions import APIError
+from .exceptions import ParsingError
+from .models import Semester
+from .parsers import parse_course_schedule_xls, parse_pdf
 
-PDF_DOWNLOAD_URL = "https://registrar.nu.edu.kz/registrar_downloads/json"
+BASE_DOWNLOAD_URL = "https://registrar.nu.edu.kz/registrar_downloads/json"
 COURSE_SCHEDULES_URL = "https://registrar.nu.edu.kz/course-schedules"
 
 
-class PdfType(Enum):
-    """
-    Allowed file types available on Registrar
-    """
+class DocumentType(Enum):
+    """Document types available on Registrar."""
 
-    SCHEDULE = "school_schedule_by_term"
+    # PDF_SCHEDULE = "school_schedule_by_term"    # removed in favor of xls
+    XLS_SCHEDULE = "xls_school_schedule_by_term"
     FINAL = "final_exams_schedule"
     REQUIREMENTS = "course_requirements"
 
 
 class Scraper:
-    """
-    Web scraper for registrar
-    """
+    """Web scraper for registrar."""
 
-    def __init__(self, timeout: int = 30, ignore_ssl: bool = False):
+    def __init__(self, timeout: int = 30, requests_verify: Any = True) -> None:  # noqa: ANN401
+        """Initialize scraper.
+
+        Args:
+            timeout (int, optional): Timeout in seconds. Defaults to 30.
+            requests_verify (Any, optional): Whether to verify requests. Defaults to True.
+        """
         self.timeout = timeout
-        self.ignore_ssl = ignore_ssl
+        self.requests_verify = requests_verify
 
-    def get_last_published_semester(self):
-        """
-        Obtains the last semester from the courses schedule page.
-        Returns the same object as api.get_semester()
-        """
-        try:
-            response = requests.get(COURSE_SCHEDULES_URL, timeout=self.timeout)
-        except SSLError as error:
-            if self.ignore_ssl:
-                response = requests.get(
-                    COURSE_SCHEDULES_URL, timeout=self.timeout, verify=False
-                )
-            else:
-                raise APIError from error
+    def get_last_published_semester(self) -> Semester:
+        """Obtain the last semester from the course schedules page.
 
+        Returns Semester object.
+
+        Raises:
+            ParsingError: If no semester was found.
+        """
+        response = requests.get(COURSE_SCHEDULES_URL, timeout=self.timeout, verify=self.requests_verify)
         response.raise_for_status()
         text = response.text
-        start = text.index(
-            '<a href="https://registrar.nu.edu.kz/registrar_downloads/json?method=printDocument'
-        )
-        end = text.index("</a>", start)
-        element = text[start:end]
-        start = element.index("termid=") + 7
-        end = element.index('"', start)
-        semester_id = element[start:end]
-        semester_name = element[end + 2 :]
 
-        return {
-            "ID": semester_id,
-            "NAME": semester_name,
-        }
+        try:
+            text = text[text.index("Course schedules for ") :]
+            semester_id = re.search(r"termid=(\d+)", text)[1]
+            semester_name = re.search(r"(Fall|Spring|Summer) \d{4}", text)[0]
+        except (TypeError, ValueError) as exc:
+            msg = "Failed to retrieve last published semester"
+            raise ParsingError(msg) from exc
 
-    def get_pdf(
-        self, pdf_type: PdfType, as_json: bool = False, extra_params: dict = None
-    ):
-        """
-        Helper function for parsing tables from a PDF file
+        return Semester(id=semester_id, name=semester_name)
+
+    def get_document(
+        self,
+        doctype: DocumentType,
+        parse: bool = True,
+        extra_params: dict | None = None,
+    ) -> str | BytesIO:
+        """Helper function to download the document.
+
+        Args:
+            doctype (DocumentType): Document type.
+            parse (bool, optional): Whether to parse the document. Defaults to True.
+            extra_params (dict, optional): Extra parameters for request. Defaults to None.
+
+        Returns:
+            Document as string (parsed JSON) or BytesIO (raw file).
         """
         params = {
             "method": "printDocument",
-            "name": pdf_type.value,
+            "name": doctype.value,
             **extra_params,
         }
-        print(params)
-
-        try:
-            response = requests.get(
-                PDF_DOWNLOAD_URL, params=params, timeout=self.timeout
-            )
-        except SSLError as error:
-            if self.ignore_ssl:
-                response = requests.get(
-                    PDF_DOWNLOAD_URL, params=params, timeout=self.timeout, verify=False
-                )
-            else:
-                raise APIError from error
-
-        response.raise_for_status()
-        content = BytesIO(response.content)
-
-        if not as_json:
-            return content
-
-        try:
-            dataframe = read_pdf(
-                content, pages="all", lattice=True, pandas_options={"header": None}
-            )
-        except UnicodeDecodeError:
-            # fallback to cp1252 if utf-8 fails
-            dataframe = read_pdf(
-                content,
-                encoding="cp1252",
-                pages="all",
-                lattice=True,
-                pandas_options={"header": None},
-            )
-
-        dataframe = pd.concat(dataframe, ignore_index=True).replace(
-            r"\r", r" ", regex=True
+        response = requests.get(
+            BASE_DOWNLOAD_URL,
+            params=params,
+            timeout=self.timeout,
+            verify=self.requests_verify,
         )
-        return dataframe.to_json(orient="table", index=False)
+        response.raise_for_status()
+        document = BytesIO(response.content)
 
-    def get_course_schedule(self, semester, academic_level=None, school=None):
+        if not parse:
+            return document
+        if doctype is DocumentType.XLS_SCHEDULE:
+            return parse_course_schedule_xls(document)
+        return parse_pdf(document)
+
+    def get_course_schedule(
+        self,
+        semester_id: str | int,
+        academic_level_id: str | int | None = None,
+        school_id: str | int | None = None,
+    ) -> str:
+        """Get course schedule in JSON format.
+
+        Args:
+            semester_id (str): Semester id.
+            academic_level_id (str, optional): Academic level id.
+            school_id (str, optional): School id.
+
+        Returns:
+            Course schedule in JSON format.
         """
-        Get course schedule in JSON format
-        :param semester: semester(term) id
-        :param academic_level: academic level id
-        :param school: school id
-        :return: course schedule in JSON format
-        """
-        params = {
-            "termid": semester,
-            "academiclevel": academic_level,
-            "schoolid": school,
+        extra_params = {
+            "termid": semester_id,
+            "academiclevel": academic_level_id,
+            "schoolid": school_id,
         }
 
-        return self.get_pdf(PdfType.SCHEDULE, as_json=True, extra_params=params)
+        return self.get_document(DocumentType.XLS_SCHEDULE, extra_params=extra_params)
 
-    def get_course_requirements(self, semester, academic_level=None, school=None):
+    def get_course_requirements(
+        self,
+        semester_id: str | int,
+        academic_level_id: str | int | None = None,
+        school_id: str | int | None = None,
+    ) -> str:
+        """Get course requirements in JSON format. Requires optional pdf package and Java 8+ installed.
+
+        Args:
+            semester_id (str): Semester id.
+            academic_level_id (str, optional): Academic level id.
+            school_id (str, optional): School id.
+
+        Returns:
+            Course requirements in JSON format.
         """
-        Get course requirements in JSON format
-        :param semester: semester(term) id
-        :param academic_level: academic level id
-        :param school: school id
-        :return: course requirements in JSON format
-        """
-        params = {
-            "termid": semester,
-            "academiclevel": academic_level,
-            "schoolid": school,
+        extra_params = {
+            "termid": semester_id,
+            "academiclevel": academic_level_id,
+            "schoolid": school_id,
         }
 
-        return self.get_pdf(PdfType.REQUIREMENTS, as_json=True, extra_params=params)
+        return self.get_document(DocumentType.REQUIREMENTS, extra_params=extra_params)
 
-    def get_finals_schedule(self, semester, school):
+    def get_finals_schedule(self, semester_id: str | int, school_id: str | int) -> str:
+        """Get course finals schedule in JSON format. Requires optional pdf package and Java 8+ installed.
+
+        Args:
+            semester_id (str): Semester id.
+            school_id (str): School id.
         """
-        Get course finals schedule in JSON format
-        :param semester: semester(term) id
-        :param school: school id
-        :return: finals schedule in JSON format
-        """
-        params = {
-            "termid": semester,
-            "schoolid": school,
+        extra_params = {
+            "termid": semester_id,
+            "schoolid": school_id,
             "type": "pdf",
         }
 
-        return self.get_pdf(PdfType.FINAL, as_json=True, extra_params=params)
+        return self.get_document(DocumentType.FINAL, extra_params=extra_params)

@@ -1,15 +1,5 @@
-"""
-nuregi
-"""
-from .api import (
-    get_academic_level,
-    get_breadth,
-    get_course_list,
-    get_department,
-    get_instructor,
-    get_school,
-    get_semester,
-    get_subject,
-)
-from .exceptions import *
+"""nuregi."""
+
+# ruff: noqa: F401
+from .api import RegistrarAPI
 from .scraper import Scraper
