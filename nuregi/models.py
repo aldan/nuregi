@@ -63,3 +63,32 @@ class Course(BaseModel):
     enrolled: int = Field(ge=0)
     capacity: int = Field(ge=0)
     sections: list[Section]
+
+
+class Requisites(BaseModel):
+    """Model for Requisites."""
+
+    pre: str | None
+    co: str | None
+    anti: str | None
+
+
+class Priorities(BaseModel):
+    """Model for Priority."""
+
+    one: str | None = Field(..., serialization_alias="1")
+    two: str | None = Field(..., serialization_alias="2")
+    three: str | None = Field(..., serialization_alias="3")
+    four: str | None = Field(..., serialization_alias="4")
+
+
+class CourseRequirementsBase(BaseModel):
+    """Model for CourseRequirementsBase."""
+
+    code: str
+    requisites: Requisites
+    priorities: Priorities
+
+
+class CourseWithRequirements(Course, CourseRequirementsBase):
+    """Model for CourseWithRequirements."""
