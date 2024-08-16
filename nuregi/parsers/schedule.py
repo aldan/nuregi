@@ -1,4 +1,4 @@
-"""Document parsers."""
+"""Course schedule parser."""
 
 from datetime import UTC, datetime
 from io import BytesIO
@@ -6,41 +6,29 @@ from io import BytesIO
 import pandas as pd
 from pydantic_core import to_json
 
-from .models import Course, Section, SectionPeriod
+from nuregi.models import Course, Section, SectionPeriod
+from nuregi.parsers.common import validate_return_as
+
+__schedule_columns = [
+    "School",
+    "Level",
+    "Course Abbr",
+    "S/T",
+    "Course Title",
+    "Cr(US)",
+    "Cr(ECTS)",
+    "Start date",
+    "End date",
+    "Days",
+    "Time",
+    "Enr",
+    "Cap",
+    "Faculty",
+    "Room",
+]
 
 
-def parse_pdf(pdf: BytesIO) -> str:
-    """PDF parser.
-
-    Args:
-        pdf: BytesIO object.
-
-    Returns:
-        Parsed table from PDF as JSON string.
-    """
-    try:
-        from tabula import read_pdf
-    except ImportError as exc:
-        msg = 'Tabula is not installed (requires Java 8+). Please install it using `poetry add "nuregi[pdf]"`'
-        raise ImportError(msg) from exc
-
-    try:
-        dataframe = read_pdf(pdf, pages="all", lattice=True, pandas_options={"header": None})
-    except UnicodeDecodeError:
-        # fallback to cp1252 if utf-8 fails
-        dataframe = read_pdf(
-            pdf,
-            encoding="cp1252",
-            pages="all",
-            lattice=True,
-            pandas_options={"header": None},
-        )
-
-    dataframe = pd.concat(dataframe, ignore_index=True).replace(r"\r", r" ", regex=True)
-    return dataframe.to_json(orient="table", index=False)
-
-
-def convert_time_to_minutes(weekday_letter: str, time_string: str) -> int:
+def __convert_time_to_minutes(weekday_letter: str, time_string: str) -> int:
     """Converts course schedule day & time to minutes.
 
     Args:
@@ -55,39 +43,39 @@ def convert_time_to_minutes(weekday_letter: str, time_string: str) -> int:
     return weekday_minutes[weekday_letter.strip()] + time.hour * 60 + time.minute
 
 
-def parse_course_schedule_xls(xls: BytesIO) -> str:
+def __get_schedule_as_dataframe(xls: BytesIO) -> pd.DataFrame:
+    """Converts schedule excel file to pandas dataframe.
+
+    Args:
+        xls (BytesIO): BytesIO object.
+
+    Returns:
+        Schedule as a pandas dataframe.
+    """
+    # ignore xlrd corruption error https://stackoverflow.com/questions/12705527/reading-excel-files-with-xlrd
+    return pd.read_excel(xls, header=2, engine="xlrd", engine_kwargs={"ignore_workbook_corruption": True})
+
+
+@validate_return_as(["json", "dataframe", "list"])
+def parse_course_schedule_xls(xls: BytesIO, return_as: str = "json") -> str | pd.DataFrame | list[Course]:
     """Course schedule XLS parser.
 
     Args:
         xls: BytesIO object.
+        return_as: output format (dataframe, json, list). Default is "json".
 
     Returns:
-        Course schedule as JSON string.
+        Course schedule.
 
     Raises:
         KeyError: If columns in course schedule excel file are missing.
     """
-    # ignore xlrd corruption error https://stackoverflow.com/questions/12705527/reading-excel-files-with-xlrd
-    dataframe = pd.read_excel(xls, header=2, engine="xlrd", engine_kwargs={"ignore_workbook_corruption": True})
-    required_columns = [
-        "School",
-        "Level",
-        "Course Abbr",
-        "S/T",
-        "Course Title",
-        "Cr(US)",
-        "Cr(ECTS)",
-        "Start date",
-        "End date",
-        "Days",
-        "Time",
-        "Enr",
-        "Cap",
-        "Faculty",
-        "Room",
-    ]
-    if not all(column in dataframe.columns for column in required_columns):
-        msg = f"Course schedule is missing required columns: {required_columns}"
+    dataframe = __get_schedule_as_dataframe(xls)
+    if return_as == "dataframe":
+        return dataframe
+
+    if not all(column in dataframe.columns for column in __schedule_columns):
+        msg = f"Course schedule is missing required columns: {__schedule_columns}"
         raise KeyError(msg)
     dataframe = dataframe.replace({pd.NA: None})
     courses: list[Course] = []
@@ -102,8 +90,8 @@ def parse_course_schedule_xls(xls: BytesIO) -> str:
                     continue
                 periods.append(
                     SectionPeriod(
-                        start=convert_time_to_minutes(period_data["Days"], period_data["Time"].split("-")[0]),
-                        end=convert_time_to_minutes(period_data["Days"], period_data["Time"].split("-")[1]),
+                        start=__convert_time_to_minutes(period_data["Days"], period_data["Time"].split("-")[0]),
+                        end=__convert_time_to_minutes(period_data["Days"], period_data["Time"].split("-")[1]),
                         room=period_data["Room"],
                         distant=False,
                     ),
@@ -132,5 +120,6 @@ def parse_course_schedule_xls(xls: BytesIO) -> str:
                 sections=sections,
             ),
         )
-
+    if return_as == "list":
+        return courses
     return to_json(courses).decode("utf-8")
