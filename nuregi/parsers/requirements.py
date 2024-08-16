@@ -77,7 +77,7 @@ def parse_course_requirements_pdf(
             four=course["4th priority registration"],
         )
         course_requirement = CourseRequirementsBase(
-            code=course["Abbr"],
+            code="/".join(sorted([subcode.strip() for subcode in course["Abbr"].split("/")])),
             requisites=requisites,
             priorities=priorities,
         )

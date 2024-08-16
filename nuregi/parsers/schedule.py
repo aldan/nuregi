@@ -109,7 +109,7 @@ def parse_course_schedule_xls(xls: BytesIO, return_as: str = "json") -> str | pd
             Course(
                 school=course_data["School"],
                 level=course_data["Level"],
-                code=course_data["Course Abbr"],
+                code="/".join(sorted(course_data["Course Abbr"].split("/"))),
                 title=course_data["Course Title"],
                 credits_us=course_data["Cr(US)"],
                 credits_eu=course_data["Cr(ECTS)"],
