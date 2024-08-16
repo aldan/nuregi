@@ -50,7 +50,7 @@ def parse_course_requirements_pdf(
 
     Args:
         pdf: BytesIO object.
-        return_as: output format (dataframe, json). Default is "json".
+        return_as: output format (dataframe, json, list). Default is "json".
 
     Returns:
         Course requirements.

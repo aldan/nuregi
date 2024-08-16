@@ -7,9 +7,13 @@ from typing import Any
 
 import requests
 
-from .exceptions import ParsingError
-from .models import Semester
-from .parsers import parse_course_schedule_xls, parse_pdf
+from nuregi.exceptions import ParsingError
+from nuregi.models import Semester
+from nuregi.parsers import (
+    parse_course_requirements_pdf,
+    parse_course_schedule_with_requirements,
+    parse_course_schedule_xls,
+)
 
 BASE_DOWNLOAD_URL = "https://registrar.nu.edu.kz/registrar_downloads/json"
 COURSE_SCHEDULES_URL = "https://registrar.nu.edu.kz/course-schedules"
@@ -18,7 +22,6 @@ COURSE_SCHEDULES_URL = "https://registrar.nu.edu.kz/course-schedules"
 class DocumentType(Enum):
     """Document types available on Registrar."""
 
-    # PDF_SCHEDULE = "school_schedule_by_term"    # removed in favor of xls
     XLS_SCHEDULE = "xls_school_schedule_by_term"
     FINAL = "final_exams_schedule"
     REQUIREMENTS = "course_requirements"
@@ -93,7 +96,10 @@ class Scraper:
             return document
         if doctype is DocumentType.XLS_SCHEDULE:
             return parse_course_schedule_xls(document)
-        return parse_pdf(document)
+        if doctype is DocumentType.REQUIREMENTS:
+            return parse_course_requirements_pdf(document)
+        msg = f"get_document(parse=True) is not implemented for doctype {DocumentType.FINAL}"
+        raise NotImplementedError(msg)
 
     def get_course_schedule(
         self,
@@ -125,7 +131,7 @@ class Scraper:
         academic_level_id: str | int | None = None,
         school_id: str | int | None = None,
     ) -> str:
-        """Get course requirements in JSON format. Requires optional pdf package and Java 8+ installed.
+        """Get course requirements in JSON format.
 
         Args:
             semester_id (str): Semester id.
@@ -143,8 +149,34 @@ class Scraper:
 
         return self.get_document(DocumentType.REQUIREMENTS, extra_params=extra_params)
 
+    def get_course_schedule_with_requirements(
+        self,
+        semester_id: str | int,
+        academic_level_id: str | int | None = None,
+        school_id: str | int | None = None,
+    ) -> str:
+        """Get course schedule with requirements in JSON format.
+
+        Args:
+            semester_id (str): Semester id.
+            academic_level_id (str, optional): Academic level id.
+            school_id (str, optional): School id.
+
+        Returns:
+            Course schedule with requirements in JSON format.
+        """
+        extra_params = {
+            "termid": semester_id,
+            "academiclevel": academic_level_id,
+            "schoolid": school_id,
+        }
+
+        schedule = self.get_document(DocumentType.XLS_SCHEDULE, extra_params=extra_params, parse=False)
+        requirements = self.get_document(DocumentType.REQUIREMENTS, extra_params=extra_params, parse=False)
+        return parse_course_schedule_with_requirements(schedule, requirements)
+
     def get_finals_schedule(self, semester_id: str | int, school_id: str | int) -> str:
-        """Get course finals schedule in JSON format. Requires optional pdf package and Java 8+ installed.
+        """Get course finals schedule in JSON format.
 
         Args:
             semester_id (str): Semester id.
