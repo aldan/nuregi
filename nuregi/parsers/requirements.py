@@ -36,6 +36,7 @@ def __get_requirements_as_dataframe(pdf: BytesIO) -> pd.DataFrame:
     table_flat = [elem for table_frag in table for elem in table_frag]
     dataframe = pd.DataFrame(table_flat)
     dataframe = dataframe.replace({r"^\s+": "", r"\s+$": "", r"\s\s+": " "}, regex=True).replace(r"\n", " ", regex=True)
+    dataframe.columns = dataframe.iloc[0]
     dataframe = dataframe[1:]
     return dataframe.dropna(subset=["Abbr"])
 
