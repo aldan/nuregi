@@ -9,36 +9,29 @@ A basic Python-based API client library for registrar.nu.edu.kz
 
 ## Requirements
 - Python 3.11+
-- Java 8+ is required to use tabula-py
 
 ## Installation
 Install with [`pip`](https://pypi.org/project/nuregi/):
 ```
 pip install nuregi
 ```
-
-## Usage
+## Example usage
 ### API
 ```python
-import nuregi
+from nuregi.api import RegistrarAPI
 
-"""
-All get_object type functions have object_id and timeout arguments
-"""
 
-# Sample for semesters
-fall2022_semester = nuregi.get_semester(object_id=642, timeout=10)
-all_semesters = nuregi.get_semester(timeout=10)
+api = RegistrarAPI(timeout=30, requests_verify=True)
+fall2022_semester = api.get_semester(object_id=642)
+all_semesters = api.get_semester()
+schools = api.get_school()
+academic_levels = api.get_academic_level()
+departments = api.get_department()
+subjects = api.get_subject()
+instructors = api.get_instructor()
+breadth = api.get_breadth()  # likely deprecated
 
-# Other objects
-schools = nuregi.get_school()
-academic_levels = nuregi.get_academic_level()
-departments = nuregi.get_department()
-subjects = nuregi.get_subject()
-instructors = nuregi.get_instructor()
-breadth = nuregi.get_breadth()  # likely deprecated
-
-course_list = nuregi.get_course_list(
+course_list = api.get_course_list(
     limit=10,
     offset=1,
     semester_id=642,
@@ -48,33 +41,30 @@ course_list = nuregi.get_course_list(
     subject_id=None,
     instructor_id=None,
     breadth_id=None,
-    timeout=10,
 )
 ```
 
 ### Scraper
+Unlike API, Scraper returns data in a defined format. See [models.py](nuregi/models.py) for details.
 ```python
-import nuregi
+from nuregi.scraper import Scraper
 
-scraper = nuregi.Scraper(timeout=10, ignore_ssl=True)
+
+scraper = Scraper(requests_verify="ca.crt")
 
 current_semester = scraper.get_last_published_semester()
+schedule_with_reqs = scraper.get_course_schedule_with_requirements(semester_id=current_semester.id)
 
 fall2022_ug_seds_course_schedule = scraper.get_course_schedule(
-    semester=642,
-    academic_level=1,
-    school=13,
+    semester_id=642,
+    academic_level_id=1,
+    school_id=13,
 )
 
 fall2022_ug_seds_course_requirements = scraper.get_course_requirements(
-    semester=642,
-    academic_level=1,
-    school=13,
-)
-
-spring2022_seds_finals = scraper.get_finals_schedule(
-    semester=642,
-    school=13,
+    semester_id=642,
+    academic_level_id=1,
+    school_id=13,
 )
 ```
 
